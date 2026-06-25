@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S.</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 24px;background:rgba(0,180,255,.05);border-bottom:1px solid rgba(0,180,255,.15)}
+.top-bar h1{font-size:18px;font-weight:300;letter-spacing:6px;color:#00b4ff;text-transform:uppercase}
+.top-bar .settings{display:flex;gap:8px;align-items:center}
+.top-bar button{background:rgba(0,180,255,.1);border:1px solid rgba(0,180,255,.3);color:#00b4ff;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;letter-spacing:1px}
+.top-bar button:hover{background:rgba(0,180,255,.2)}
+.top-bar input{background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);color:#e0e0e0;padding:5px 10px;border-radius:4px;font-size:12px;width:220px}
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.orb-container{position:relative;width:280px;height:280px;margin-bottom:30px}
+.orb{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(0,180,255,.3);animation:pulse 3s ease-in-out infinite}
+.orb:nth-child(2){inset:15px;border-color:rgba(0,180,255,.2);animation-delay:.5s}
+.orb:nth-child(3){inset:30px;border-color:rgba(0,180,255,.15);animation-delay:1s}
+.orb-core{position:absolute;inset:45px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,255,.15) 0%,transparent 70%);display:flex;align-items:center;justify-content:center;font-size:14px;color:#00b4ff;letter-spacing:2px;text-transform:uppercase}
+.listening .orb{animation:pulse-active .8s ease-in-out infinite;border-color:rgba(0,200,255,.6)}
+.listening .orb-core{background:radial-gradient(circle,rgba(0,200,255,.3) 0%,transparent 70%)}
+.speaking .orb{animation:pulse-speak 1s ease-in-out infinite;border-color:rgba(0,255,180,.5)}
+.speaking .orb-core{background:radial-gradient(circle,rgba(0,255,180,.25) 0%,transparent 70%)}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.03);opacity:1}}
+@keyframes pulse-active{0%,100%{transform:scale(.97);opacity:.7}50%{transform:scale(1.05);opacity:1}}
+@keyframes pulse-speak{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+.status{font-size:13px;color:rgba(0,180,255,.6);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;min-height:20px}
+.transcript{max-width:700px;width:90%;text-align:center;min-height:60px}
+.transcript .user-text{font-size:18px;color:#fff;margin-bottom:8px;font-style:italic;opacity:.8}
+.transcript .ai-text{font-size:16px;color:#b0d4e8;line-height:1.6}
+.controls{display:flex;gap:16px;margin-top:24px;margin-bottom:20px}
+.mic-btn{width:64px;height:64px;border-radius:50%;border:2px solid rgba(0,180,255,.4);background:rgba(0,180,255,.1);color:#00b4ff;font-size:24px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.mic-btn:hover{background:rgba(0,180,255,.2);transform:scale(1.05)}
+.mic-btn.active{background:rgba(255,60,60,.2);border-color:rgba(255,60,60,.5);color:#ff4444;animation:mic-pulse 1s infinite}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,60,60,.3)}50%{box-shadow:0 0 0 12px rgba(255,60,60,0)}}
+.text-input{display:flex;gap:8px;max-width:500px;width:90%}
+.text-input input{flex:1;background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);color:#e0e0e0;padding:10px 16px;border-radius:8px;font-size:14px;outline:none}
+.text-input input:focus{border-color:rgba(0,180,255,.5)}
+.text-input button{background:rgba(0,180,255,.15);border:1px solid rgba(0,180,255,.3);color:#00b4ff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:14px}
+.log{position:absolute;bottom:0;left:0;right:0;max-height:140px;overflow-y:auto;padding:10px 24px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-size:11px;color:rgba(0,180,255,.4);font-family:monospace}
+.log div{padding:2px 0}
+.log .cmd{color:rgba(0,255,180,.5)}
+.log .err{color:rgba(255,100,100,.5)}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:#12121a;border:1px solid rgba(0,180,255,.2);border-radius:12px;padding:24px;width:90%;max-width:440px}
+.modal-box h2{color:#00b4ff;font-weight:300;letter-spacing:3px;margin-bottom:16px;font-size:16px}
+.modal-box label{display:block;font-size:12px;color:#888;margin:12px 0 4px;letter-spacing:1px}
+.modal-box input,.modal-box select{width:100%;background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);color:#e0e0e0;padding:8px 12px;border-radius:6px;font-size:14px}
+.modal-box .btns{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.modal-box .btns button{padding:8px 20px;border-radius:6px;border:1px solid rgba(0,180,255,.3);background:rgba(0,180,255,.1);color:#00b4ff;cursor:pointer;font-size:13px}
+.modal-box .btns button.primary{background:rgba(0,180,255,.25)}
+.cmd-list{position:absolute;top:60px;right:20px;background:rgba(10,10,20,.95);border:1px solid rgba(0,180,255,.15);border-radius:8px;padding:16px;font-size:12px;max-width:280px;display:none}
+.cmd-list.show{display:block}
+.cmd-list h3{color:#00b4ff;font-weight:300;letter-spacing:2px;margin-bottom:10px;font-size:13px}
+.cmd-list div{padding:4px 0;color:#8ab4c8}
+.cmd-list span{color:#00b4ff}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="settings">
+    <button onclick="toggleCmds()">📋 Команды</button>
+    <button onclick="showSettings()">⚙️ Настройки</button>
+  </div>
+</div>
+
+<div class="cmd-list" id="cmdList">
+  <h3>Голосовые команды</h3>
+  <div><span>«Открой [сайт]»</span> — открыть сайт</div>
+  <div><span>«Найди / Поищи [запрос]»</span> — поиск в Google</div>
+  <div><span>«Который час / Время»</span> — текущее время</div>
+  <div><span>«Какое сегодня число»</span> — дата</div>
+  <div><span>«Запомни [текст]»</span> — сохранить заметку</div>
+  <div><span>«Мои заметки»</span> — показать заметки</div>
+  <div><span>«Калькулятор [выражение]»</span> — вычислить</div>
+  <div><span>«Таймер [N] минут»</span> — установить таймер</div>
+  <div><span>«Скриншот»</span> — снимок экрана</div>
+  <div><span>«Тёмная/светлая тема»</span> — смена темы</div>
+  <div><span>Любой вопрос</span> — ответ через Claude AI</div>
+</div>
+
+<div class="main" id="mainArea">
+  <div class="orb-container" id="orbContainer">
+    <div class="orb"></div><div class="orb"></div><div class="orb"></div>
+    <div class="orb-core" id="orbCore">Готов</div>
+  </div>
+  <div class="status" id="statusText"></div>
+  <div class="transcript">
+    <div class="user-text" id="userText"></div>
+    <div class="ai-text" id="aiText">Привет! Я Джарвис. Нажми на микрофон или напиши команду.</div>
+  </div>
+  <div class="controls">
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Голосовой ввод">🎤</button>
+  </div>
+  <div class="text-input">
+    <input type="text" id="textCmd" placeholder="Введите команду или вопрос..." />
+    <button onclick="sendText()">➤</button>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-box">
+    <h2>Настройки</h2>
+    <label>API-ключ Anthropic</label>
+    <input type="password" id="sApiKey" placeholder="sk-ant-..." />
+    <label>Имя пользователя</label>
+    <input type="text" id="sName" placeholder="Как вас называть?" />
+    <label>Голос ответа</label>
+    <select id="sVoice"></select>
+    <label>Скорость речи</label>
+    <input type="range" id="sRate" min="0.5" max="2" step="0.1" value="1" />
+    <div class="btns">
+      <button onclick="closeSettings()">Отмена</button>
+      <button class="primary" onclick="saveSettings()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS = k => localStorage.getItem('jarvis_'+k);
+const LS_SET = (k,v) => localStorage.setItem('jarvis_'+k, v);
+
+let recognition = null;
+let isListening = false;
+let synth = window.speechSynthesis;
+let notes = JSON.parse(LS('notes') || '[]');
+let timerIds = [];
+
+const $=id=>document.getElementById(id);
+const log=(msg,cls='')=>{const d=document.createElement('div');d.className=cls;d.textContent=`[${new Date().toLocaleTimeString('ru')}] ${msg}`;$('log').prepend(d)};
+
+// Init settings
+if(LS('apiKey')) $('sApiKey').value=LS('apiKey');
+if(LS('name')) $('sName').value=LS('name');
+
+// Populate voices
+function loadVoices(){
+  const sel=$('sVoice');
+  sel.innerHTML='';
+  const voices=synth.getVoices();
+  const ruVoices=voices.filter(v=>v.lang.startsWith('ru'));
+  const list=ruVoices.length?ruVoices:voices;
+  list.forEach((v,i)=>{
+    const o=document.createElement('option');
+    o.value=i;
+    o.textContent=`${v.name} (${v.lang})`;
+    if(v.lang.startsWith('ru')&&v.default) o.selected=true;
+    sel.appendChild(o);
+  });
+  if(LS('voice')){
+    const saved=LS('voice');
+    for(let i=0;i<sel.options.length;i++){
+      if(sel.options[i].textContent.includes(saved)){sel.selectedIndex=i;break}
+    }
+  }
+}
+synth.onvoiceschanged=loadVoices;
+loadVoices();
+
+function showSettings(){$('settingsModal').classList.add('show')}
+function closeSettings(){$('settingsModal').classList.remove('show')}
+function saveSettings(){
+  LS_SET('apiKey',$('sApiKey').value.trim());
+  LS_SET('name',$('sName').value.trim());
+  const sel=$('sVoice');
+  if(sel.selectedIndex>=0) LS_SET('voice',sel.options[sel.selectedIndex].textContent);
+  LS_SET('rate',$('sRate').value);
+  closeSettings();
+  log('Настройки сохранены','cmd');
+}
+
+function toggleCmds(){$('cmdList').classList.toggle('show')}
+
+// Speech recognition
+function initRecognition(){
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
+    log('Распознавание речи не поддерживается','err');
+    return null;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const r=new SR();
+  r.lang='ru-RU';
+  r.interimResults=true;
+  r.continuous=false;
+  r.onstart=()=>{
+    isListening=true;
+    $('micBtn').classList.add('active');
+    $('orbContainer').classList.add('listening');
+    $('orbCore').textContent='Слушаю';
+    $('statusText').textContent='● Запись';
+    log('Слушаю...');
+  };
+  r.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    $('userText').textContent=final||interim;
+    if(final) processCommand(final.trim());
+  };
+  r.onerror=e=>{
+    log('Ошибка: '+e.error,'err');
+    stopMic();
+  };
+  r.onend=()=>stopMic();
+  return r;
+}
+
+function toggleMic(){
+  if(isListening){recognition?.stop();return}
+  synth.cancel();
+  if(!recognition) recognition=initRecognition();
+  if(!recognition) return;
+  try{recognition.start()}catch(e){log(''+e,'err')}
+}
+
+function stopMic(){
+  isListening=false;
+  $('micBtn').classList.remove('active');
+  $('orbContainer').classList.remove('listening');
+  $('orbCore').textContent='Готов';
+  $('statusText').textContent='';
+}
+
+function sendText(){
+  const v=$('textCmd').value.trim();
+  if(!v) return;
+  $('textCmd').value='';
+  $('userText').textContent=v;
+  processCommand(v);
+}
+$('textCmd').addEventListener('keydown',e=>{if(e.key==='Enter')sendText()});
+
+// Speak
+function speak(text){
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ru-RU';
+  u.rate=parseFloat(LS('rate')||'1');
+  const voices=synth.getVoices();
+  const saved=LS('voice');
+  if(saved){
+    const v=voices.find(x=>saved.includes(x.name));
+    if(v) u.voice=v;
+  } else {
+    const ru=voices.find(v=>v.lang.startsWith('ru'));
+    if(ru) u.voice=ru;
+  }
+  u.onstart=()=>{$('orbContainer').classList.add('speaking');$('orbCore').textContent='Говорю'};
+  u.onend=()=>{$('orbContainer').classList.remove('speaking');$('orbCore').textContent='Готов'};
+  synth.speak(u);
+}
+
+function reply(text){
+  $('aiText').textContent=text;
+  speak(text);
+  log('Джарвис: '+text.slice(0,80),'cmd');
+}
+
+// Command processor
+async function processCommand(raw){
+  const text=raw.toLowerCase().trim();
+  const name=LS('name')||'';
+  log('Команда: '+raw);
+
+  // Time
+  if(text.match(/который час|сколько времен|текущее время|время сейчас/)){
+    reply('Сейчас '+new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}));
+    return;
+  }
+
+  // Date
+  if(text.match(/какое.*(число|дата)|сегодняшн/)){
+    reply('Сегодня '+new Date().toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+    return;
+  }
+
+  // Open website
+  const openMatch=text.match(/(?:открой|открыть|зайди на|перейди на|запусти)\s+(.+)/);
+  if(openMatch){
+    let site=openMatch[1].replace(/сайт\s*/,'').trim();
+    let url=site;
+    const shortcuts={
+      'ютуб':'youtube.com','youtube':'youtube.com','гугл':'google.com','google':'google.com',
+      'вконтакте':'vk.com','вк':'vk.com','телеграм':'web.telegram.org','telegram':'web.telegram.org',
+      'почту':'mail.google.com','почта':'mail.google.com','gmail':'mail.google.com',
+      'гитхаб':'github.com','github':'github.com','яндекс':'ya.ru',
+      'карты':'maps.google.com','переводчик':'translate.google.com',
+      'чат':'chat.openai.com','claude':'claude.ai',
+    };
+    for(const[k,v]of Object.entries(shortcuts)){if(site.includes(k)){url=v;break}}
+    if(!url.startsWith('http')) url='https://'+url;
+    if(!url.includes('.'))url='https://'+site+'.com';
+    window.open(url,'_blank');
+    reply('Открываю '+site);
+    return;
+  }
+
+  // Search
+  const searchMatch=text.match(/(?:найди|поищи|загугли|поиск|ищи|найти)\s+(.+)/);
+  if(searchMatch){
+    const q=searchMatch[1];
+    window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
+    reply('Ищу: '+q);
+    return;
+  }
+
+  // Calculator
+  const calcMatch=text.match(/(?:калькулятор|посчитай|вычисли|сколько будет)\s+(.+)/);
+  if(calcMatch){
+    try{
+      const expr=calcMatch[1].replace(/умножить на|умножить/g,'*').replace(/разделить на|делить на|разделить/g,'/').replace(/плюс/g,'+').replace(/минус/g,'-').replace(/в квадрате/g,'**2').replace(/[^0-9+\-*/().%\s^]/g,'').replace(/\^/g,'**');
+      const result=Function('"use strict"; return ('+expr+')')();
+      reply('Результат: '+result);
+    }catch(e){reply('Не смог вычислить. Попробуйте проще.')}
+    return;
+  }
+
+  // Timer
+  const timerMatch=text.match(/таймер\s+(?:на\s+)?(\d+)\s*(минут|мин|секунд|сек)/);
+  if(timerMatch){
+    let sec=parseInt(timerMatch[1]);
+    if(timerMatch[2].startsWith('мин')) sec*=60;
+    const id=setTimeout(()=>{
+      reply('Таймер сработал! '+timerMatch[1]+' '+timerMatch[2]+' прошло.');
+      try{new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczGjOClMGvk2Y+KCWA').play()}catch(e){}
+    },sec*1000);
+    timerIds.push(id);
+    reply(`Таймер установлен на ${timerMatch[1]} ${timerMatch[2]}`);
+    return;
+  }
+
+  // Notes - save
+  const noteMatch=text.match(/(?:запомни|запиши|заметка|сохрани)\s+(.+)/);
+  if(noteMatch){
+    notes.push({text:noteMatch[1],date:new Date().toLocaleString('ru')});
+    LS_SET('notes',JSON.stringify(notes));
+    reply('Запомнил: '+noteMatch[1]);
+    return;
+  }
+
+  // Notes - list
+  if(text.match(/мои заметки|покажи заметки|что .*запомн/)){
+    if(!notes.length){reply('У вас пока нет заметок.');return}
+    const list=notes.slice(-5).map((n,i)=>`${i+1}. ${n.text}`).join('. ');
+    reply('Ваши заметки: '+list);
+    return;
+  }
+
+  // Screenshot
+  if(text.match(/скриншот|снимок экрана/)){
+    reply('К сожалению, браузер не позволяет делать скриншот всего экрана без вашего разрешения. Используйте клавишу Print Screen или Win+Shift+S.');
+    return;
+  }
+
+  // Greeting
+  if(text.match(/^(привет|здравствуй|добрый|хай|хей|hello|hi)\b/)){
+    const greet=name?`Здравствуйте, ${name}!`:'Здравствуйте!';
+    reply(greet+' Чем могу помочь?');
+    return;
+  }
+
+  // How are you
+  if(text.match(/как.*дела|как.*поживаешь|как.*ты/)){
+    reply('Все системы работают нормально. Спасибо, что спросили! Чем могу помочь?');
+    return;
+  }
+
+  // Who are you
+  if(text.match(/кто ты|что ты|как тебя зовут/)){
+    reply('Я Джарвис — ваш голосовой ассистент. Помогу открыть сайты, найти информацию, посчитать и ответить на вопросы.');
+    return;
+  }
+
+  // Shutdown
+  if(text.match(/выключи|закрой|стоп|хватит|замолчи/)){
+    synth.cancel();
+    reply('Хорошо, жду ваших команд.');
+    return;
+  }
+
+  // Clear notes
+  if(text.match(/удали.*заметк|очисти.*заметк/)){
+    notes=[];
+    LS_SET('notes','[]');
+    reply('Все заметки удалены.');
+    return;
+  }
+
+  // Fallback — ask Claude AI
+  await askClaude(raw);
+}
+
+async function askClaude(question){
+  const apiKey=LS('apiKey');
+  if(!apiKey){
+    reply('Для ответов на вопросы нужен API-ключ Anthropic. Откройте настройки и введите ключ.');
+    return;
+  }
+
+  $('orbCore').textContent='Думаю';
+  $('statusText').textContent='● Обработка';
+  $('orbContainer').classList.add('listening');
+  $('aiText').textContent='Думаю...';
+
+  const name=LS('name');
+  const systemPrompt=`Ты — голосовой ассистент Джарвис (J.A.R.V.I.S.). Отвечай кратко (1-3 предложения), по-русски, дружелюбно и по делу.${name?' Пользователя зовут '+name+'.':''}`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        system:systemPrompt,
+        tools:[{type:"web_search_20250305",name:"web_search",max_uses:3}],
+        messages:[{role:'user',content:question}]
+      })
+    });
+
+    if(!resp.ok) throw new Error('API '+ resp.status);
+    const data=await resp.json();
+    let text='';
+    for(const b of data.content){if(b.type==='text') text+=b.text}
+    text=text.trim()||'Не удалось получить ответ.';
+    $('orbContainer').classList.remove('listening');
+    $('orbCore').textContent='Готов';
+    $('statusText').textContent='';
+    reply(text);
+  }catch(e){
+    $('orbContainer').classList.remove('listening');
+    $('orbCore').textContent='Готов';
+    $('statusText').textContent='';
+    log('Ошибка AI: '+e.message,'err');
+    reply('Произошла ошибка при обращении к AI. Проверьте API-ключ в настройках.');
+  }
+}
+
+// Keyboard shortcut: Space to toggle mic when not typing
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.code==='Space'){e.preventDefault();toggleMic()}
+});
+</script>
+</body>
+</html>
