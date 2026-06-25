@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поиск аналогов оборудования</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a1a; min-height: 100vh; }
+.header { background: #1a56db; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header button { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.header button:hover { background: rgba(255,255,255,.25); }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.api-banner { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.api-banner input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+.api-banner button { background: #f59e0b; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.name-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+.name-bar label { font-size: 14px; color: #6b7280; white-space: nowrap; }
+.name-bar input { flex: 1; max-width: 250px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+.card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 16px; overflow: hidden; }
+.card-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #f3f4f6; background: #fafbfc; }
+.card-header .info { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.card-header .info strong { font-size: 16px; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.badge.searching { background: #dbeafe; color: #1d4ed8; }
+.badge.done { background: #d1fae5; color: #065f46; }
+.badge.error { background: #fee2e2; color: #991b1b; }
+.card-header .actions { display: flex; gap: 6px; }
+.card-header .actions button { background: none; border: 1px solid #d1d5db; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #374151; }
+.card-header .actions button:hover { background: #f3f4f6; }
+.card-header .actions button.del:hover { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.meta { font-size: 12px; color: #9ca3af; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 10px 14px; background: #f9fafb; color: #6b7280; font-weight: 500; font-size: 13px; border-bottom: 1px solid #e5e7eb; }
+td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+td a { color: #2563eb; text-decoration: none; word-break: break-all; }
+td a:hover { text-decoration: underline; }
+.add-form { background: #fff; border-radius: 10px; border: 2px dashed #d1d5db; padding: 18px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.add-form .field { display: flex; flex-direction: column; gap: 4px; }
+.add-form .field label { font-size: 12px; color: #6b7280; }
+.add-form .field input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; width: 180px; }
+.add-form button { background: #1a56db; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; height: 38px; align-self: flex-end; }
+.add-form button:hover { background: #1e40af; }
+.add-form button:disabled { background: #93c5fd; cursor: not-allowed; }
+.empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #93c5fd; border-top-color: #1d4ed8; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tbl-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚙️ Поиск аналогов оборудования</h1>
+  <button onclick="toggleApiPanel()">🔑 API-ключ</button>
+</div>
+
+<div class="container">
+  <div class="api-banner" id="apiBanner">
+    <span>🔑</span>
+    <input type="password" id="apiKeyInput" placeholder="Введите ваш API-ключ Anthropic (sk-ant-...)" />
+    <button onclick="saveApiKey()">Сохранить</button>
+    <span id="apiStatus" style="font-size:13px;color:#6b7280;"></span>
+  </div>
+
+  <div class="name-bar">
+    <label>👤 Ваше имя:</label>
+    <input type="text" id="userName" placeholder="Введите имя" />
+  </div>
+
+  <div id="list"></div>
+
+  <div class="add-form">
+    <div class="field">
+      <label>Бренд *</label>
+      <input type="text" id="fBrand" placeholder="Например: Siemens" />
+    </div>
+    <div class="field">
+      <label>Модель *</label>
+      <input type="text" id="fModel" placeholder="Например: S7-1200" />
+    </div>
+    <div class="field">
+      <label>Категория</label>
+      <input type="text" id="fCategory" placeholder="ПЛК, насос..." />
+    </div>
+    <div class="field">
+      <label>Комментарий</label>
+      <input type="text" id="fNotes" placeholder="Характеристики..." style="width:240px;" />
+    </div>
+    <button onclick="addItem()" id="addBtn">➕ Добавить и найти аналоги</button>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'eq_analogs_data';
+const API_KEY_KEY = 'anthropic_api_key';
+const NAME_KEY = 'eq_user_name';
+
+let items = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+
+document.getElementById('userName').value = localStorage.getItem(NAME_KEY) || '';
+document.getElementById('userName').addEventListener('input', e => localStorage.setItem(NAME_KEY, e.target.value));
+
+const apiKey = localStorage.getItem(API_KEY_KEY);
+if (apiKey) {
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('apiStatus').textContent = '✓ Ключ сохранён';
+  document.getElementById('apiBanner').style.display = 'none';
+}
+
+function toggleApiPanel() {
+  const b = document.getElementById('apiBanner');
+  b.style.display = b.style.display === 'none' ? 'flex' : 'none';
+}
+
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (!k) return;
+  localStorage.setItem(API_KEY_KEY, k);
+  document.getElementById('apiStatus').textContent = '✓ Сохранено';
+}
+
+function getApiKey() {
+  return localStorage.getItem(API_KEY_KEY) || '';
+}
+
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(items));
+}
+
+function render() {
+  const el = document.getElementById('list');
+  if (!items.length) {
+    el.innerHTML = '<div class="empty">Список пуст. Добавьте оборудование ниже.</div>';
+    return;
+  }
+  el.innerHTML = items.map((it, i) => `
+    <div class="card">
+      <div class="card-header">
+        <div class="info">
+          <strong>${esc(it.brand)} ${esc(it.model)}</strong>
+          ${it.category ? `<span style="color:#6b7280;font-size:13px;">${esc(it.category)}</span>` : ''}
+          <span class="badge ${it.status}">${statusLabel(it.status)}</span>
+        </div>
+        <div class="actions">
+          <span class="meta">👤 ${esc(it.addedBy)} · ${new Date(it.addedAt).toLocaleDateString('ru')}</span>
+          <button onclick="retry(${i})">🔄 Повторить</button>
+          <button class="del" onclick="remove(${i})">✕</button>
+        </div>
+      </div>
+      ${it.notes ? `<div style="padding:8px 18px;font-size:13px;color:#6b7280;">💬 ${esc(it.notes)}</div>` : ''}
+      ${it.status === 'searching' ? `<div style="padding:20px;text-align:center;"><span class="spinner"></span> Идёт поиск аналогов...</div>` : ''}
+      ${it.status === 'error' ? `<div style="padding:14px 18px;color:#991b1b;font-size:13px;">⚠️ ${esc(it.errorMsg || 'Ошибка поиска')}</div>` : ''}
+      ${it.alternatives && it.alternatives.length ? `
+        <div class="tbl-wrap"><table>
+          <tr><th>Аналог</th><th>Производитель</th><th>Регион</th><th>Поставщик</th><th>Цена</th><th>Причина соответствия</th><th>Источник</th></tr>
+          ${it.alternatives.map(a => `<tr>
+            <td>${esc(a.name)}</td>
+            <td>${esc(a.manufacturer)}</td>
+            <td>${esc(a.region)}</td>
+            <td>${esc(a.supplier)}</td>
+            <td>${a.price ? esc(a.price) : '—'}</td>
+            <td>${esc(a.match_reason)}</td>
+            <td>${a.source_url ? `<a href="${esc(a.source_url)}" target="_blank">🔗 ссылка</a>` : '—'}</td>
+          </tr>`).join('')}
+        </table></div>` : ''}
+    </div>
+  `).join('');
+}
+
+function statusLabel(s) {
+  if (s === 'searching') return '⏳ Поиск...';
+  if (s === 'done') return '✅ Готово';
+  return '❌ Ошибка';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function addItem() {
+  const brand = document.getElementById('fBrand').value.trim();
+  const model = document.getElementById('fModel').value.trim();
+  if (!brand || !model) { alert('Заполните бренд и модель'); return; }
+  if (!getApiKey()) { alert('Сначала введите API-ключ Anthropic'); toggleApiPanel(); return; }
+  const name = document.getElementById('userName').value.trim() || 'Аноним';
+
+  const item = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    brand, model,
+    category: document.getElementById('fCategory').value.trim(),
+    notes: document.getElementById('fNotes').value.trim(),
+    addedBy: name,
+    addedAt: new Date().toISOString(),
+    status: 'searching',
+    alternatives: []
+  };
+  items.unshift(item);
+  save(); render();
+  document.getElementById('fBrand').value = '';
+  document.getElementById('fModel').value = '';
+  document.getElementById('fCategory').value = '';
+  document.getElementById('fNotes').value = '';
+  searchAnalogs(item);
+}
+
+function remove(i) {
+  if (!confirm('Удалить позицию?')) return;
+  items.splice(i, 1);
+  save(); render();
+}
+
+function retry(i) {
+  if (!getApiKey()) { alert('Введите API-ключ'); toggleApiPanel(); return; }
+  items[i].status = 'searching';
+  items[i].alternatives = [];
+  items[i].errorMsg = '';
+  save(); render();
+  searchAnalogs(items[i]);
+}
+
+async function searchAnalogs(item) {
+  const query = `${item.brand} ${item.model}` + (item.category ? ` (${item.category})` : '') + (item.notes ? `. ${item.notes}` : '');
+
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4096,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }],
+    messages: [{
+      role: "user",
+      content: `Найди 3-5 аналогов оборудования: ${query}
+
+Для каждого аналога укажи:
+- name: модель аналога
+- manufacturer: производитель
+- region: "Казахстан/СНГ" или "Зарубежный"
+- supplier: название поставщика
+- price: цена (если найдена, с валютой) или null
+- match_reason: краткая причина, почему это аналог
+- source_url: ссылка на источник или null
+
+Ищи как в Казахстане/СНГ, так и у зарубежных поставщиков.
+
+Ответь ТОЛЬКО валидным JSON-массивом объектов, без markdown и пояснений.`
+    }]
+  };
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`API ${resp.status}: ${err.slice(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    let text = '';
+    for (const block of data.content) {
+      if (block.type === 'text') text += block.text;
+    }
+
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('Не удалось распознать ответ');
+
+    const alternatives = JSON.parse(jsonMatch[0]);
+    const idx = items.findIndex(x => x.id === item.id);
+    if (idx !== -1) {
+      items[idx].alternatives = alternatives;
+      items[idx].status = 'done';
+      save(); render();
+    }
+  } catch (e) {
+    const idx = items.findIndex(x => x.id === item.id);
+    if (idx !== -1) {
+      items[idx].status = 'error';
+      items[idx].errorMsg = e.message;
+      save(); render();
+    }
+  }
+}
+
+render();
+</script>
+</body>
+</html>
